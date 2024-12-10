@@ -73,7 +73,6 @@ class Bird(pg.sprite.Sprite):
         self.rect.center = xy
         self.speed = 10
         self.boost_speed = 20
-
     def change_img(self, num: int, screen: pg.Surface):
         """
         こうかとん画像を切り替え，画面に転送する
@@ -143,20 +142,21 @@ class Beam(pg.sprite.Sprite):
     """
     ビームに関するクラス
     """
-    def __init__(self, bird: Bird):
+    def __init__(self, bird: Bird, angle0: float = 0):
         """
         ビーム画像Surfaceを生成する
         引数 bird：ビームを放つこうかとん
+        引数 angle0：ビームの回転角度
         """
         super().__init__()
         self.vx, self.vy = bird.dire
-        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        angle = math.degrees(math.atan2(-self.vy, self.vx)) + angle0
         self.image = pg.transform.rotozoom(pg.image.load(f"fig/beam.png"), angle, 1.0)
         self.vx = math.cos(math.radians(angle))
         self.vy = -math.sin(math.radians(angle))
         self.rect = self.image.get_rect()
-        self.rect.centery = bird.rect.centery+bird.rect.height*self.vy
-        self.rect.centerx = bird.rect.centerx+bird.rect.width*self.vx
+        self.rect.centery = bird.rect.centery + bird.rect.height * self.vy
+        self.rect.centerx = bird.rect.centerx + bird.rect.width * self.vx
         self.speed = 10
 
     def update(self):
@@ -164,9 +164,32 @@ class Beam(pg.sprite.Sprite):
         ビームを速度ベクトルself.vx, self.vyに基づき移動させる
         引数 screen：画面Surface
         """
-        self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
+        self.rect.move_ip(self.speed * self.vx, self.speed * self.vy)
         if check_bound(self.rect) != (True, True):
             self.kill()
+
+
+class NeoBeam:
+    """
+    複数方向にビームを発射するクラス
+    """
+    def __init__(self, bird: Bird, num: int):
+        """
+        NeoBeamクラスのイニシャライザ
+        引数 bird：ビームを放つこうかとん
+        引数 num：発射するビームの数
+        """
+        self.beams = self.gen_beams(bird, num)
+
+    def gen_beams(self, bird: Bird, num: int) -> list[Beam]:
+        """
+        指定された数のビームを生成する
+        引数 bird：ビームを放つこうかとん
+        引数 num：発射するビームの数
+        戻り値：生成されたビームのリスト
+        """
+        angles = range(-50, 51, 100 // (num - 1))
+        return [Beam(bird, angle) for angle in angles]
 
 
 class Explosion(pg.sprite.Sprite):
@@ -264,14 +287,18 @@ def main():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                beams.add(Beam(bird))
+                if key_lst[pg.K_z]:  # 右Shiftキーで弾幕発動
+                    neo_beam = NeoBeam(bird, 5)  # ビームを5方向に発射
+                    beams.add(*neo_beam.beams)
+                else:  # 通常ビーム発射
+                    beams.add(Beam(bird))
         screen.blit(bg_img, [0, 0])
 
-        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
+        if tmr % 200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
         for emy in emys:
-            if emy.state == "stop" and tmr%emy.interval == 0:
+            if emy.state == "stop" and tmr % emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
                 bombs.add(Bomb(emy, bird))
 
