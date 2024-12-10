@@ -311,7 +311,7 @@ def main():
         # ビームと敵機の衝突判定
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
             exps.add(Explosion(emy, 100))
-            score.value += 10
+            score.value += 100
             bird.change_img(6, screen)
 
         # ビームと爆弾の衝突判定
